@@ -1,12 +1,12 @@
 
-import { GoogleGenAI, Modality } from "@google/genai";
 import type { GeneratedContent } from '../types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable is not set.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const PROXY_BASE_URL = 'https://ai.juguang.chat/v1beta/models';
+const API_KEY = process.env.API_KEY;
 
 export async function editImage(
     base64ImageData: string, 
@@ -47,16 +47,28 @@ export async function editImage(
 
     parts.push({ text: fullPrompt });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image-preview',
-      contents: { parts },
-      config: {
-        responseModalities: [Modality.IMAGE, Modality.TEXT],
+    const response = await fetch(`${PROXY_BASE_URL}/gemini-2.5-flash-image-preview:generateContent?key=${API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          responseModalities: ['IMAGE', 'TEXT'],
+        },
+      }),
     });
 
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorData}`);
+    }
+
+    const data = await response.json();
+
     const result: GeneratedContent = { imageUrl: null, text: null };
-    const responseParts = response.candidates?.[0]?.content?.parts;
+    const responseParts = data.candidates?.[0]?.content?.parts;
 
     if (responseParts) {
       for (const part of responseParts) {
@@ -73,8 +85,8 @@ export async function editImage(
         if (result.text) {
             errorMessage = `The model responded: "${result.text}"`;
         } else {
-            const finishReason = response.candidates?.[0]?.finishReason;
-            const safetyRatings = response.candidates?.[0]?.safetyRatings;
+            const finishReason = data.candidates?.[0]?.finishReason;
+            const safetyRatings = data.candidates?.[0]?.safetyRatings;
             errorMessage = "The model did not return an image. It might have refused the request. Please try a different image or prompt.";
             
             if (finishReason === 'SAFETY') {
@@ -118,12 +130,7 @@ export async function generateVideo(
     try {
         onProgress("Initializing video generation...");
 
-        // FIX: The `request` object was explicitly typed as `any`, which caused a loss of type
-        // information for the `operation` variable returned by `generateVideos`. This could lead
-        // to a TypeScript error. By allowing TypeScript to infer the type, we ensure
-        // `operation` is correctly typed, resolving the error.
-        const request = {
-            model: 'veo-2.0-generate-001',
+        const requestBody = {
             prompt: prompt,
             config: {
                 numberOfVideos: 1,
@@ -137,13 +144,41 @@ export async function generateVideo(
             })
         };
 
-        let operation = await ai.models.generateVideos(request);
+        // 注意：视频生成API可能需要不同的端点，这里使用相同的代理地址结构
+        // 您可能需要根据实际的代理API文档调整端点
+        const response = await fetch(`${PROXY_BASE_URL}/veo-2.0-generate-001:generateVideos?key=${API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorData}`);
+        }
+
+        let operation = await response.json();
         
         onProgress("Polling for results, this may take a few minutes...");
 
+        // 轮询操作状态
         while (!operation.done) {
             await new Promise(resolve => setTimeout(resolve, 10000));
-            operation = await ai.operations.getVideosOperation({ operation: operation });
+            
+            const pollResponse = await fetch(`${PROXY_BASE_URL}/operations/${operation.name}?key=${API_KEY}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            if (!pollResponse.ok) {
+                throw new Error(`Polling failed: HTTP ${pollResponse.status}`);
+            }
+            
+            operation = await pollResponse.json();
         }
 
         if (operation.error) {
@@ -156,7 +191,7 @@ export async function generateVideo(
             throw new Error("Video generation completed, but no download link was found.");
         }
 
-        return `${downloadLink}&key=${process.env.API_KEY}`;
+        return `${downloadLink}&key=${API_KEY}`;
 
     } catch (error) {
         console.error("Error calling Video Generation API:", error);
