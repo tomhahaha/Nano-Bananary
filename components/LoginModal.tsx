@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../i18n/context';
 import { useModal } from '../contexts/ModalContext';
 import type { LoginForm } from '../types/auth';
+import ForgotPassword from './ForgotPassword';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
   const [showPassword, setShowPassword] = useState(false);
   const [captchaImage, setCaptchaImage] = useState<string>('');
   const [countdown, setCountdown] = useState(0);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Generate mock captcha
   const generateCaptcha = () => {
@@ -232,6 +234,15 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
                     )}
                   </button>
                 </div>
+                <div className="text-right mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] transition-colors"
+                  >
+                    忘记密码？
+                  </button>
+                </div>
               </div>
             ) : (
               <div>
@@ -321,6 +332,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
           </div>
         </div>
       </div>
+      
+      {/* 忘记密码组件 */}
+      <ForgotPassword
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        onBackToLogin={() => {
+          setShowForgotPassword(false);
+          // 不关闭登录框，返回登录界面
+        }}
+      />
     </div>
   );
 };

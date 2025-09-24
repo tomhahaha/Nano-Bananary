@@ -26,23 +26,31 @@ const CreditHistory: React.FC<CreditHistoryProps> = ({ isOpen, onClose }) => {
   const [filter, setFilter] = useState<'all' | 'charge' | 'consume'>('all');
 
   useEffect(() => {
-    fetchTransactions();
-  }, []);
+    if (isOpen) {
+      fetchTransactions();
+    }
+  }, [isOpen]);
 
   const fetchTransactions = async () => {
+    setLoading(true);
     try {
+      console.log('开始获取积分交易记录...');
       const result = await authService.getCreditTransactions();
       console.log('API返回结果:', result); // 添加调试日志
       if (result.success) {
         // 兼容不同的后端数据格式
         const transactions = result.data || result.transactions || [];
+        console.log('解析到的交易记录:', transactions);
+        console.log('交易记录数量:', transactions.length);
         setTransactions(transactions);
         console.log('设置的交易记录:', transactions);
       } else {
         console.error('获取积分明细失败:', result.message);
+        alert('获取积分明细失败: ' + (result.message || '未知错误'));
       }
     } catch (error) {
       console.error('获取积分明细失败:', error);
+      alert('获取积分明细时发生错误: ' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
       setLoading(false);
     }

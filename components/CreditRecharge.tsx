@@ -53,43 +53,13 @@ const CreditRecharge: React.FC<CreditRechargeProps> = ({ isOpen, onClose }) => {
         credits = pkg.credits;
       }
 
-      // 调用充值API
+      // 调用简化的充值API（假充值）
       const result = await authService.createChargeOrder(amount, credits, paymentMethod);
       
       if (result.success) {
-        if (paymentMethod === 'alipay') {
-          // 支付宝支付：跳转到支付页面
-          if (result.paymentUrl) {
-            // 在新窗口打开支付页面
-            const paymentWindow = window.open(result.paymentUrl, '_blank', 'width=800,height=600');
-            
-            // 轮询订单状态
-            const checkPayment = setInterval(async () => {
-              try {
-                const orderStatus = await authService.getOrderStatus(result.orderId);
-                if (orderStatus.success && orderStatus.order.status === 'paid') {
-                  clearInterval(checkPayment);
-                  paymentWindow?.close();
-                  alert(t('creditSystem.rechargeSuccess').replace('{credits}', String(credits)));
-                  await refreshUser();
-                  onClose();
-                }
-              } catch (error) {
-                console.error('查询订单状态失败:', error);
-              }
-            }, 3000); // 每3秒查询一次
-            
-            // 5分钟后停止轮询
-            setTimeout(() => {
-              clearInterval(checkPayment);
-            }, 300000);
-          }
-        } else if (paymentMethod === 'wechat') {
-          // 微信支付：显示二维码
-          if (result.qrCodeUrl) {
-            showWechatQRCode(result.qrCodeUrl, result.orderId, credits);
-          }
-        }
+        alert(t('creditSystem.rechargeSuccess').replace('{credits}', String(credits)));
+        await refreshUser();
+        onClose();
       } else {
         alert(result.message || t('creditSystem.rechargeFailed'));
       }
@@ -101,49 +71,7 @@ const CreditRecharge: React.FC<CreditRechargeProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // 显示微信支付二维码
-  const showWechatQRCode = (qrCodeUrl: string, orderId: string, credits: number) => {
-    const qrModal = document.createElement('div');
-    qrModal.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60';
-    qrModal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-sm w-full text-center">
-        <h3 class="text-lg font-bold mb-4">微信扫码支付</h3>
-        <div class="mb-4">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUrl)}" alt="微信支付二维码" class="mx-auto" />
-        </div>
-        <p class="text-sm text-gray-600 mb-4">请使用微信扫一扫上方二维码完成支付</p>
-        <button id="closeQR" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">关闭</button>
-      </div>
-    `;
-    
-    document.body.appendChild(qrModal);
-    
-    // 关闭按钮事件
-    qrModal.querySelector('#closeQR')?.addEventListener('click', () => {
-      document.body.removeChild(qrModal);
-    });
-    
-    // 轮询订单状态
-    const checkPayment = setInterval(async () => {
-      try {
-        const orderStatus = await authService.getOrderStatus(orderId);
-        if (orderStatus.success && orderStatus.order.status === 'paid') {
-          clearInterval(checkPayment);
-          document.body.removeChild(qrModal);
-          alert(t('creditSystem.rechargeSuccess').replace('{credits}', String(credits)));
-          await refreshUser();
-          onClose();
-        }
-      } catch (error) {
-        console.error('查询订单状态失败:', error);
-      }
-    }, 3000);
-    
-    // 5分钟后停止轮询
-    setTimeout(() => {
-      clearInterval(checkPayment);
-    }, 300000);
-  };
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -261,7 +189,7 @@ const CreditRecharge: React.FC<CreditRechargeProps> = ({ isOpen, onClose }) => {
 
           {/* 支付方式 */}
           <div className="space-y-3">
-            <h3 className="font-medium text-[var(--text-primary)]">{t('creditSystem.paymentMethod')}</h3>
+            <h3 className="font-medium text-[var(--text-primary)]">{t('creditSystem.paymentMethod')} <span className="text-sm text-[var(--text-secondary)]">(演示模式)</span></h3>
             <div className="grid grid-cols-2 gap-3">
               <label
                 className={`border-2 rounded-lg p-3 cursor-pointer transition-colors flex items-center gap-3 ${
@@ -281,7 +209,7 @@ const CreditRecharge: React.FC<CreditRechargeProps> = ({ isOpen, onClose }) => {
                 <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-sm font-bold">
                   支
                 </div>
-                <span className="font-medium text-[var(--text-primary)]">{t('creditSystem.alipay')}</span>
+                <span className="font-medium text-[var(--text-primary)]">{t('creditSystem.alipay')} (模拟)</span>
               </label>
               
               <label
@@ -302,8 +230,11 @@ const CreditRecharge: React.FC<CreditRechargeProps> = ({ isOpen, onClose }) => {
                 <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center text-white text-sm font-bold">
                   微
                 </div>
-                <span className="font-medium text-[var(--text-primary)]">{t('creditSystem.wechat')}</span>
+                <span className="font-medium text-[var(--text-primary)]">{t('creditSystem.wechat')} (模拟)</span>
               </label>
+            </div>
+            <div className="text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] p-2 rounded">
+              💡 这是演示功能，不涉及真实支付，积分将直接充值到您的账户。
             </div>
           </div>
 
@@ -313,7 +244,7 @@ const CreditRecharge: React.FC<CreditRechargeProps> = ({ isOpen, onClose }) => {
             disabled={loading || (isCustom && !customAmount)}
             className="w-full bg-[var(--accent-primary)] text-[var(--text-on-accent)] py-3 px-4 rounded-lg font-medium hover:bg-[var(--accent-primary)]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? t('creditSystem.processing') : t('creditSystem.rechargeNow')}
+            {loading ? t('creditSystem.processing') : '模拟充值 (免费)'}
           </button>
         </div>
         </div>

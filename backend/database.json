@@ -1,69 +1,24 @@
 {
   "users": [
     {
-      "id": "test-user-1",
-      "username": "testuser",
-      "phone": "13800138000",
-      "credits": 2600,
-      "password_hash": "$2a$10$example",
-      "createdAt": "2025-09-24T07:29:14.264Z",
-      "updatedAt": "2025-09-24T07:43:42.188Z"
-    },
-    {
-      "id": "user-1758699023770",
+      "id": "user-1758716925606",
       "username": "fenggm",
       "phone": "17600340717",
-      "credits": 1700,
+      "credits": 900,
       "password_hash": "$2a$10$example",
-      "createdAt": "2025-09-24T07:30:23.770Z",
-      "updatedAt": "2025-09-24T12:06:01.216Z"
-    },
-    {
-      "id": "user-1758699088531",
-      "username": "fenggm",
-      "phone": "17600340717",
-      "credits": 100,
-      "password_hash": "$2a$10$example",
-      "createdAt": "2025-09-24T07:31:28.531Z",
-      "updatedAt": "2025-09-24T07:31:28.531Z"
+      "createdAt": "2025-09-24T12:28:45.606Z",
+      "updatedAt": "2025-09-24T12:28:59.843Z"
     }
   ],
   "creditTransactions": [
     {
-      "id": "trans-1",
-      "userId": "test-user-1",
-      "type": "charge",
-      "amount": 100,
-      "balance": 1000,
-      "description": "注册奖励",
-      "createdAt": "2025-09-24T07:29:14.267Z"
-    },
-    {
-      "id": "trans-1758699822188",
-      "userId": "test-user-1",
-      "type": "charge",
-      "amount": 1600,
-      "balance": 2600,
-      "description": "充值20元",
-      "createdAt": "2025-09-24T07:43:42.188Z"
-    },
-    {
-      "id": "trans-1758715559882",
-      "userId": "user-1758699023770",
+      "id": "trans-1758716939843",
+      "userId": "user-1758716925606",
       "type": "charge",
       "amount": 800,
       "balance": 900,
       "description": "充值10元",
-      "createdAt": "2025-09-24T12:05:59.882Z"
-    },
-    {
-      "id": "trans-1758715561216",
-      "userId": "user-1758699023770",
-      "type": "charge",
-      "amount": 800,
-      "balance": 1700,
-      "description": "充值10元",
-      "createdAt": "2025-09-24T12:06:01.216Z"
+      "createdAt": "2025-09-24T12:28:59.843Z"
     }
   ]
 }

@@ -10,6 +10,8 @@ const DB_PATH = path.join(__dirname, 'database.json');
 
 // 简化的用户会话管理（存储token对应的用户ID）
 const userSessions = new Map();
+// 存储验证码（手机号 -> 验证码）
+const verificationCodes = new Map();
 
 // 初始化数据库
 function initDatabase() {
@@ -141,6 +143,25 @@ app.post('/api/auth/register', (req, res) => {
   console.log('Received register request:', { username, phone });
   
   const db = readDatabase();
+  
+  // 检查手机号是否已经注册
+  const existingUser = db.users.find(u => u.phone === phone);
+  if (existingUser) {
+    return res.status(409).json({
+      success: false,
+      message: '该手机号已经注册，请直接登录或使用其他手机号'
+    });
+  }
+  
+  // 检查用户名是否已存在
+  const existingUsername = db.users.find(u => u.username === username);
+  if (existingUsername) {
+    return res.status(409).json({
+      success: false,
+      message: '用户名已存在，请选择其他用户名'
+    });
+  }
+  
   const newUser = {
     id: 'user-' + Date.now(),
     username,
@@ -171,6 +192,120 @@ app.post('/api/auth/register', (req, res) => {
       createdAt: newUser.createdAt,
       updatedAt: newUser.updatedAt
     }
+  });
+});
+
+// 发送验证码（忘记密码）
+app.post('/api/auth/send-verification-code', (req, res) => {
+  const { phone } = req.body;
+  
+  console.log('Received send verification code request:', { phone });
+  
+  if (!phone) {
+    return res.status(400).json({
+      success: false,
+      message: '请输入手机号'
+    });
+  }
+  
+  const db = readDatabase();
+  const user = db.users.find(u => u.phone === phone);
+  
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: '该手机号尚未注册，请先注册账号'
+    });
+  }
+  
+  // 生成隨机6位验证码
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  // 存储验证码（实际应用中应设置过期时间）
+  verificationCodes.set(phone, {
+    code,
+    timestamp: Date.now(),
+    used: false
+  });
+  
+  // 模拟发送短信（实际应用中应调用短信服务）
+  console.log(`验证码已发送至 ${phone}: ${code}`);
+  
+  res.json({
+    success: true,
+    message: '验证码已发送，请注意查收',
+    // 开发环境下返回验证码，生产环境下应删除
+    code: process.env.NODE_ENV === 'development' ? code : undefined
+  });
+});
+
+// 重置密码
+app.post('/api/auth/reset-password', (req, res) => {
+  const { phone, verificationCode, newPassword } = req.body;
+  
+  console.log('Received reset password request:', { phone, verificationCode });
+  
+  if (!phone || !verificationCode || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: '请填写完整信息'
+    });
+  }
+  
+  // 验证验证码
+  const storedCode = verificationCodes.get(phone);
+  if (!storedCode) {
+    return res.status(400).json({
+      success: false,
+      message: '验证码已过期，请重新获取'
+    });
+  }
+  
+  if (storedCode.used) {
+    return res.status(400).json({
+      success: false,
+      message: '验证码已使用，请重新获取'
+    });
+  }
+  
+  if (storedCode.code !== verificationCode) {
+    return res.status(400).json({
+      success: false,
+      message: '验证码错误'
+    });
+  }
+  
+  // 检查验证码是否过期（5分钟）
+  if (Date.now() - storedCode.timestamp > 5 * 60 * 1000) {
+    verificationCodes.delete(phone);
+    return res.status(400).json({
+      success: false,
+      message: '验证码已过期，请重新获取'
+    });
+  }
+  
+  const db = readDatabase();
+  const user = db.users.find(u => u.phone === phone);
+  
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: '用户不存在'
+    });
+  }
+  
+  // 更新密码（实际应用中应使用bcrypt加密）
+  user.password_hash = '$2a$10$' + newPassword; // 简化处理
+  user.updatedAt = new Date().toISOString();
+  
+  writeDatabase(db);
+  
+  // 标记验证码为已使用
+  storedCode.used = true;
+  
+  res.json({
+    success: true,
+    message: '密码重置成功，请使用新密码登录'
   });
 });
 

@@ -17,7 +17,7 @@ export interface CreditTransaction {
   balance: number; // 变动后余额
   description: string; // 交易描述
   orderId?: string; // 订单号（充值时）
-  createdAt: Date;
+  createdAt: string; // 修改为字符串类型，匹配后端返回的格式
 }
 
 export interface ChargeOrder {

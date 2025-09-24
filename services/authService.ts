@@ -186,15 +186,20 @@ class AuthService {
 
   async createChargeOrder(amount: number, credits: number, paymentMethod: 'alipay' | 'wechat'): Promise<{ success: boolean; orderId?: string; paymentUrl?: string; qrCodeUrl?: string; message?: string }> {
     try {
-      const response = await this.makeRequest<{ success: boolean; orderId: string; paymentUrl?: string; qrCodeUrl?: string }>('/credits/charge', {
+      // 使用简化的假充值API
+      const response = await this.makeRequest<{ success: boolean; order?: { id: string; amount: number; credits: number; status: string }; message?: string }>('/credits/charge', {
         method: 'POST',
-        body: JSON.stringify({ amount, credits, paymentMethod }),
+        body: JSON.stringify({ amount, credits }),
       });
-      return response;
+      return {
+        success: response.success,
+        orderId: response.order?.id,
+        message: response.message
+      };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : '创建充值订单失败'
+        message: error instanceof Error ? error.message : '充值失败'
       };
     }
   }
@@ -207,6 +212,36 @@ class AuthService {
       return {
         success: false,
         message: error instanceof Error ? error.message : '查询订单状态失败'
+      };
+    }
+  }
+
+  async sendForgotPasswordCode(phone: string): Promise<{ success: boolean; code?: string; message?: string }> {
+    try {
+      const response = await this.makeRequest<{ success: boolean; code?: string; message: string }>('/auth/send-verification-code', {
+        method: 'POST',
+        body: JSON.stringify({ phone }),
+      });
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '发送验证码失败'
+      };
+    }
+  }
+
+  async resetPassword(phone: string, verificationCode: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await this.makeRequest<{ success: boolean; message: string }>('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ phone, verificationCode, newPassword }),
+      });
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '密码重置失败'
       };
     }
   }
