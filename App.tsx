@@ -14,11 +14,28 @@ import HistoryPanel from './components/HistoryPanel';
 import { useTranslation } from './i18n/context';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import ThemeSwitcher from './components/ThemeSwitcher';
+import LoginModal from './components/LoginModal';
+import RegisterModal from './components/RegisterModal';
+import UserMenu from './components/UserMenu';
+import CreditRecharge from './components/CreditRecharge';
+import CreditHistory from './components/CreditHistory';
+import UserSettings from './components/UserSettings';
+import { useAuth } from './contexts/AuthContext';
+import { useModal, ModalProvider } from './contexts/ModalContext';
+import { authService } from './services/authService';
+import { historyService } from './services/historyService';
 
 type ActiveTool = 'mask' | 'none';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { t } = useTranslation();
+  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { isAnyModalOpen } = useModal();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showCreditRecharge, setShowCreditRecharge] = useState(false);
+  const [showCreditHistory, setShowCreditHistory] = useState(false);
+  const [showUserSettings, setShowUserSettings] = useState(false);
   const [transformations, setTransformations] = useState<Transformation[]>(() => {
     try {
       const savedOrder = localStorage.getItem('transformationOrder');
@@ -81,6 +98,33 @@ const App: React.FC = () => {
         }
     };
   }, [history, generatedContent]);
+
+  // Load history based on authentication status
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (isAuthenticated) {
+        // Load from API
+        try {
+          const response = await historyService.getHistory(1, 50);
+          if (response.success && response.history) {
+            const convertedHistory = response.history.map(item => 
+              historyService.convertToGeneratedContent(item)
+            );
+            setHistory(convertedHistory);
+          }
+        } catch (error) {
+          console.error('Failed to load history from API:', error);
+          // Fallback to localStorage
+          setHistory(historyService.getFromLocalStorage());
+        }
+      } else {
+        // Load from localStorage
+        setHistory(historyService.getFromLocalStorage());
+      }
+    };
+
+    loadHistory();
+  }, [isAuthenticated]);
 
 
   const handleSelectTransformation = (transformation: Transformation) => {
@@ -166,6 +210,18 @@ const App: React.FC = () => {
 
         setGeneratedContent(result);
         setHistory(prev => [result, ...prev]);
+        
+        // Save to history service
+        if (isAuthenticated) {
+          await historyService.saveGeneratedContent(
+            result, 
+            'videoGeneration', 
+            primaryImageUrl || undefined, 
+            promptToUse
+          );
+        } else {
+          historyService.saveToLocalStorage(result);
+        }
 
     } catch (err) {
         console.error(err);
@@ -230,6 +286,18 @@ const App: React.FC = () => {
             const finalResult = { ...stepTwoResult, secondaryImageUrl: stepOneResult.imageUrl };
             setGeneratedContent(finalResult);
             setHistory(prev => [finalResult, ...prev]);
+            
+            // Save to history service
+            if (isAuthenticated) {
+              await historyService.saveGeneratedContent(
+                finalResult, 
+                selectedTransformation.key, 
+                primaryImageUrl || undefined, 
+                promptToUse
+              );
+            } else {
+              historyService.saveToLocalStorage(finalResult);
+            }
 
         } else {
              let secondaryImagePayload = null;
@@ -245,6 +313,18 @@ const App: React.FC = () => {
 
             setGeneratedContent(result);
             setHistory(prev => [result, ...prev]);
+            
+            // Save to history service
+            if (isAuthenticated) {
+              await historyService.saveGeneratedContent(
+                result, 
+                selectedTransformation.key, 
+                primaryImageUrl || undefined, 
+                promptToUse
+              );
+            } else {
+              historyService.saveToLocalStorage(result);
+            }
         }
     } catch (err) {
       console.error(err);
@@ -255,13 +335,41 @@ const App: React.FC = () => {
     }
   }, [primaryImageUrl, secondaryImageUrl, selectedTransformation, maskDataUrl, customPrompt, t]);
   
-  const handleGenerate = useCallback(() => {
-    if (selectedTransformation?.isVideo) {
-      handleGenerateVideo();
-    } else {
-      handleGenerateImage();
+  const handleGenerate = useCallback(async () => {
+    // 检查登录状态
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
     }
-  }, [selectedTransformation, handleGenerateVideo, handleGenerateImage]);
+    
+    // 检查用户积分
+    if (user && user.credits < 50) {
+      setError(t('creditSystem.insufficientCredits'));
+      return;
+    }
+    
+    try {
+      // 扣除积分
+      const creditResult = await authService.consumeCredits(50, t('creditSystem.imageGeneration'));
+      if (!creditResult.success) {
+        setError(creditResult.message || t('creditSystem.creditDeductFailed'));
+        return;
+      }
+      
+      // 更新用户信息（包括积分余额）
+      await refreshUser();
+      
+      // 执行生成操作
+      if (selectedTransformation?.isVideo) {
+        await handleGenerateVideo();
+      } else {
+        await handleGenerateImage();
+      }
+    } catch (error) {
+      console.error('Generate failed:', error);
+      setError(t('creditSystem.generateFailed'));
+    }
+  }, [selectedTransformation, handleGenerateVideo, handleGenerateImage, isAuthenticated, setShowLoginModal, user, refreshUser]);
 
 
   const handleUseImageAsInput = useCallback(async (imageUrl: string) => {
@@ -356,7 +464,7 @@ const App: React.FC = () => {
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder={t('transformations.video.promptPlaceholder')}
             rows={4}
-            className="w-full mt-2 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] transition-colors placeholder-[var(--text-tertiary)]"
+            className="w-full mt-2 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] transition-colors placeholder-[var(--text-tertiary)] text-sm sm:text-base resize-none"
           />
           <div className="mt-4">
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">{t('transformations.video.aspectRatio')}</h3>
@@ -365,7 +473,7 @@ const App: React.FC = () => {
                 <button
                   key={ratio}
                   onClick={() => setAspectRatio(ratio)}
-                  className={`py-2 px-3 text-sm font-semibold rounded-md transition-colors duration-200 ${
+                  className={`py-2 px-3 text-sm font-semibold rounded-md transition-colors duration-200 active:scale-95 touch-manipulation ${
                     aspectRatio === ratio ? 'bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[var(--text-on-accent)]' : 'bg-[rgba(107,114,128,0.2)] hover:bg-[rgba(107,114,128,0.4)]'
                   }`}
                 >
@@ -418,7 +526,7 @@ const App: React.FC = () => {
           <div className="mt-4">
             <button
               onClick={toggleMaskTool}
-              className={`w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors duration-200 ${
+              className={`w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors duration-200 active:scale-95 touch-manipulation ${
                 activeTool === 'mask' ? 'bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[var(--text-on-accent)]' : 'bg-[rgba(107,114,128,0.2)] hover:bg-[rgba(107,114,128,0.4)]'
               }`}
             >
@@ -434,32 +542,53 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans">
-      <header className="bg-[var(--bg-card-alpha)] backdrop-blur-lg sticky top-0 z-20 p-4 border-b border-[var(--border-primary)]">
+      {/* 主要内容区域 - 弹窗打开时应用模糊 */}
+      <div className={isAnyModalOpen ? 'blur-sm' : ''}>
+        <header className="bg-[var(--bg-card-alpha)] backdrop-blur-lg sticky top-0 z-10 p-3 sm:p-4 border-b border-[var(--border-primary)]">
         <div className="container mx-auto flex justify-between items-center">
           <h1 
-            className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] cursor-pointer" 
+            className="text-lg sm:text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] cursor-pointer truncate" 
             onClick={handleResetApp}
           >
             {t('app.title')}
           </h1>
-          <div className="flex items-center gap-2 md:gap-4">
-            <button
-              onClick={toggleHistoryPanel}
-              className="flex items-center gap-2 py-2 px-3 text-sm font-semibold text-[var(--text-primary)] bg-[rgba(107,114,128,0.2)] rounded-md hover:bg-[rgba(107,114,128,0.4)] transition-colors duration-200"
-              aria-label="Toggle generation history"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-              <span className="hidden sm:inline">{t('app.history')}</span>
-            </button>
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
+            {isAuthenticated ? (
+              <>
+                <button
+                  onClick={toggleHistoryPanel}
+                  className="flex items-center gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm font-semibold text-[var(--text-primary)] bg-[rgba(107,114,128,0.2)] rounded-md hover:bg-[rgba(107,114,128,0.4)] transition-colors duration-200 active:scale-95 touch-manipulation"
+                  aria-label="Toggle generation history"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <span className="hidden sm:inline">{t('app.history')}</span>
+                </button>
+                <UserMenu 
+                  onShowCreditRecharge={() => setShowCreditRecharge(true)}
+                  onShowCreditHistory={() => setShowCreditHistory(true)}
+                  onShowUserSettings={() => setShowUserSettings(true)}
+                />
+              </>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm font-semibold text-[var(--text-primary)] bg-[rgba(107,114,128,0.2)] rounded-md hover:bg-[rgba(107,114,128,0.4)] transition-colors duration-200 active:scale-95 touch-manipulation"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span className="hidden sm:inline">{t('auth.login')}</span>
+              </button>
+            )}
             <LanguageSwitcher />
             <ThemeSwitcher />
           </div>
         </div>
-      </header>
+        </header>
 
-      <main>
+        <main>
         {!selectedTransformation ? (
           <TransformationSelector 
             transformations={transformations} 
@@ -468,29 +597,30 @@ const App: React.FC = () => {
             onOrderChange={setTransformations}
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
+            userImageUrl={primaryImageUrl} // 传递用户上传的图片用于预览
           />
         ) : (
-          <div className="container mx-auto p-4 md:p-8 animate-fade-in">
-            <div className="mb-8">
+          <div className="container mx-auto p-3 sm:p-4 md:p-8 animate-fade-in">
+            <div className="mb-4 sm:mb-8">
               <button
                 onClick={handleBackToSelection}
-                className="flex items-center gap-2 text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] transition-colors duration-200 py-2 px-4 rounded-lg hover:bg-[rgba(107,114,128,0.1)]"
+                className="flex items-center gap-2 text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] transition-colors duration-200 py-2 px-3 sm:px-4 rounded-lg hover:bg-[rgba(107,114,128,0.1)] active:scale-95 touch-manipulation"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                {t('app.chooseAnotherEffect')}
+                <span className="text-sm sm:text-base">{t('app.chooseAnotherEffect')}</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
               {/* Input Column */}
-              <div className="flex flex-col gap-6 p-6 bg-[var(--bg-card-alpha)] backdrop-blur-lg rounded-xl border border-[var(--border-primary)] shadow-2xl shadow-black/20">
+              <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 bg-[var(--bg-card-alpha)] backdrop-blur-lg rounded-xl border border-[var(--border-primary)] shadow-2xl shadow-black/20">
                 <div>
                   <div className="mb-4">
-                    <h2 className="text-xl font-semibold mb-1 text-[var(--accent-primary)] flex items-center gap-3">
-                      <span className="text-3xl">{selectedTransformation.emoji}</span>
-                      {t(selectedTransformation.titleKey)}
+                    <h2 className="text-lg sm:text-xl font-semibold mb-1 text-[var(--accent-primary)] flex items-center gap-2 sm:gap-3">
+                      <span className="text-2xl sm:text-3xl">{selectedTransformation.emoji}</span>
+                      <span className="text-sm sm:text-base">{t(selectedTransformation.titleKey)}</span>
                     </h2>
                     {selectedTransformation.prompt !== 'CUSTOM' ? (
                        <p className="text-[var(--text-secondary)]">{t(selectedTransformation.descriptionKey)}</p>
@@ -514,7 +644,7 @@ const App: React.FC = () => {
                    <button
                     onClick={handleGenerate}
                     disabled={isGenerateDisabled}
-                    className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[var(--text-on-accent)] font-semibold rounded-lg shadow-lg shadow-[var(--accent-shadow)] hover:from-[var(--accent-primary-hover)] hover:to-[var(--accent-secondary-hover)] disabled:bg-[var(--bg-disabled)] disabled:from-[var(--bg-disabled)] disabled:to-[var(--bg-disabled)] disabled:text-[var(--text-disabled)] disabled:shadow-none disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                    className="w-full mt-4 sm:mt-6 py-3 px-4 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[var(--text-on-accent)] font-semibold rounded-lg shadow-lg shadow-[var(--accent-shadow)] hover:from-[var(--accent-primary-hover)] hover:to-[var(--accent-secondary-hover)] disabled:bg-[var(--bg-disabled)] disabled:from-[var(--bg-disabled)] disabled:to-[var(--bg-disabled)] disabled:text-[var(--text-disabled)] disabled:shadow-none disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-95 touch-manipulation"
                   >
                     {isLoading ? (
                       <>
@@ -537,8 +667,8 @@ const App: React.FC = () => {
               </div>
 
               {/* Output Column */}
-              <div className="flex flex-col p-6 bg-[var(--bg-card-alpha)] backdrop-blur-lg rounded-xl border border-[var(--border-primary)] shadow-2xl shadow-black/20">
-                <h2 className="text-xl font-semibold mb-4 text-[var(--accent-primary)] self-start">{t('app.result')}</h2>
+              <div className="flex flex-col p-4 sm:p-6 bg-[var(--bg-card-alpha)] backdrop-blur-lg rounded-xl border border-[var(--border-primary)] shadow-2xl shadow-black/20">
+                <h2 className="text-lg sm:text-xl font-semibold mb-4 text-[var(--accent-primary)] self-start">{t('app.result')}</h2>
                 {isLoading && <div className="flex-grow flex items-center justify-center"><LoadingSpinner message={loadingMessage} /></div>}
                 {error && <div className="flex-grow flex items-center justify-center w-full"><ErrorMessage message={error} /></div>}
                 {!isLoading && !error && generatedContent && (
@@ -561,7 +691,10 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
-      </main>
+        </main>
+      </div>
+      
+      {/* 弹窗容器 - 独立于主要内容，不受模糊影响 */}
       <ImagePreviewModal imageUrl={previewImageUrl} onClose={handleClosePreview} />
       <HistoryPanel
         isOpen={isHistoryPanelOpen}
@@ -570,7 +703,49 @@ const App: React.FC = () => {
         onUseImage={handleUseHistoryImageAsInput}
         onDownload={handleDownloadFromHistory}
       />
+      
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSwitchToRegister={() => {
+          setShowLoginModal(false);
+          setShowRegisterModal(true);
+        }}
+      />
+      
+      <RegisterModal
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        onSwitchToLogin={() => {
+          setShowRegisterModal(false);
+          setShowLoginModal(true);
+        }}
+      />
+      
+      {/* 积分相关弹窗 */}
+      <CreditRecharge
+        isOpen={showCreditRecharge}
+        onClose={() => setShowCreditRecharge(false)}
+      />
+      
+      <CreditHistory
+        isOpen={showCreditHistory}
+        onClose={() => setShowCreditHistory(false)}
+      />
+      
+      <UserSettings
+        isOpen={showUserSettings}
+        onClose={() => setShowUserSettings(false)}
+      />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ModalProvider>
+      <AppContent />
+    </ModalProvider>
   );
 };
 

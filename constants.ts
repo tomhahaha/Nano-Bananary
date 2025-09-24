@@ -1,6 +1,52 @@
-
-
 import type { Transformation } from './types';
+
+// Effect preview images mapping
+export const EFFECT_PREVIEWS: Record<string, string> = {
+  customPrompt: "/previews/effects/customPrompt.jpg",
+  figurine: "/previews/effects/figurine.jpg",
+  funko: "/previews/effects/funko.jpg",
+  lego: "/previews/effects/lego.jpg",
+  crochet: "/previews/effects/crochet.jpg",
+  cosplay: "/previews/effects/cosplay.jpg",
+  plushie: "/previews/effects/plushie.jpg",
+  keychain: "/previews/effects/keychain.jpg",
+  hdEnhance: "/previews/effects/hdEnhance.jpg",
+  pose: "/previews/effects/pose.jpg",
+  photorealistic: "/previews/effects/photorealistic.jpg",
+  fashion: "/previews/effects/fashion.jpg",
+  hyperrealistic: "/previews/effects/hyperrealistic.jpg",
+  architecture: "/previews/effects/architecture.jpg",
+  productRender: "/previews/effects/productRender.jpg",
+  sodaCan: "/previews/effects/sodaCan.jpg",
+  industrialDesign: "/previews/effects/industrialDesign.jpg",
+  iphoneWallpaper: "/previews/effects/iphoneWallpaper.jpg",
+  colorPalette: "/previews/effects/colorPalette.jpg",
+  videoGeneration: "/previews/effects/videoGeneration.jpg",
+  isolate: "/previews/effects/isolate.jpg",
+  screen3d: "/previews/effects/screen3d.jpg",
+  makeup: "/previews/effects/makeup.jpg",
+  // 添加更多效果预览图路径...
+  category_effects: "/previews/categories/effects.jpg" // 分类预览图示例
+};
+
+// Generate preview for transformation items without explicit preview
+function generateDefaultPreview(transformation: Transformation): string {
+  const colors = [
+    ['%23667eea', '%23764ba2'],
+    ['%23f093fb', '%23f5576c'],
+    ['%23ffecd2', '%23fcb69f'],
+    ['%234facfe', '%2300f2fe'],
+    ['%2343e97b', '%2338f9d7']
+  ];
+  const colorPair = colors[Math.abs(transformation.key.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length];
+  const title = transformation.titleKey.split('.').pop() || transformation.key;
+  
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='grad${transformation.key}' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:${colorPair[0]};stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:${colorPair[1]};stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23grad${transformation.key})'/%3E%3Ctext x='100' y='100' text-anchor='middle' dominant-baseline='central' fill='white' font-size='14' font-family='Arial'%3E${transformation.emoji}%3C/text%3E%3Ctext x='100' y='180' text-anchor='middle' fill='white' font-size='10'%3E效果预览%3C/text%3E%3C/svg%3E`;
+}
+
+export function getEffectPreview(transformation: Transformation): string {
+  return EFFECT_PREVIEWS[transformation.key] || generateDefaultPreview(transformation);
+}
 
 export const TRANSFORMATIONS: Transformation[] = [
   // Moved custom prompt to the top and enabled multi-image

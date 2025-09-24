@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Nano Bananary - AI-powered image transformation tool" />
+    <meta name="theme-color" content="#f97316" />
     <title>🍌 Nano Bananary｜FXM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -33,24 +35,54 @@
         --bg-primary: #ffffff;
         --bg-secondary: #f3f4f6;
         --bg-card: #ffffff;
-        --bg-card-alpha: rgba(255, 255, 255, 0.6);
+        --bg-card-alpha: rgba(255, 255, 255, 0.8);
         --text-primary: #111827; /* gray-900 */
         --text-secondary: #4b5563; /* gray-600 */
-        --text-tertiary: #6b7280; /* gray-500 */
+        --text-tertiary: #9ca3af; /* gray-400 */
         --border-primary: rgba(0, 0, 0, 0.1);
-        --accent-primary: #FF96AC;
-        --accent-secondary: #f87171; /* red-400 */
-        --accent-primary-hover: #f472b6; /* pink-400 */
-        --accent-secondary-hover: #ef4444; /* red-500 */
-        --accent-shadow: rgba(255, 150, 172, 0.25);
-        --text-on-accent: #ffffff;
-        --bg-disabled: #e5e7eb; /* gray-200 */
+        --accent-primary: #f97316; /* orange-500 */
+        --accent-secondary: #facc15; /* yellow-400 */
+        --accent-primary-hover: #ea580c; /* orange-600 */
+        --accent-secondary-hover: #eab308; /* yellow-500 */
+        --accent-shadow: rgba(249, 115, 22, 0.2);
+        --text-on-accent: #000000;
+        --bg-disabled: #d1d5db; /* gray-300 */
         --text-disabled: #9ca3af; /* gray-400 */
-        --bg-error: rgba(255, 235, 238, 1);
+        --bg-error: rgba(239, 68, 68, 0.1);
         --border-error: #ef4444;
         --text-error: #dc2626;
       }
+      
+      /* Mobile-first responsive design */
+      @media (max-width: 640px) {
+        .container {
+          padding-left: 1rem;
+          padding-right: 1rem;
+        }
+      }
+      
+      /* Better touch targets */
+      .touch-manipulation {
+        touch-action: manipulation;
+      }
+      
+      /* Prevent text selection on buttons */
+      button {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Smooth scrolling */
+      html {
+        scroll-behavior: smooth;
+      }
+      
+      /* Prevent horizontal scroll */
       body {
+        overflow-x: hidden;
         background-color: var(--bg-primary);
         color: var(--text-primary);
         transition: background-color 0.3s ease, color 0.3s ease;

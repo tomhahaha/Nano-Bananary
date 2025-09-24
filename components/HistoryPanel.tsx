@@ -1,6 +1,7 @@
 import React from 'react';
 import type { GeneratedContent } from '../types';
 import { useTranslation } from '../i18n/context';
+import { useModal } from '../contexts/ModalContext';
 
 interface HistoryPanelProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ const HistoryItem: React.FC<{ item: GeneratedContent; onUseImage: (url: string) 
     const ActionButton: React.FC<{ onClick: () => void; children: React.ReactNode; isPrimary?: boolean; }> = ({ onClick, children, isPrimary }) => (
         <button 
             onClick={onClick}
-            className={`w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-semibold rounded-md transition-colors duration-200 ${
+            className={`w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-semibold rounded-md transition-colors duration-200 active:scale-95 touch-manipulation ${
                 isPrimary 
                 ? 'bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[var(--text-on-accent)] shadow-sm shadow-[var(--accent-shadow)] hover:from-[var(--accent-primary-hover)] hover:to-[var(--accent-secondary-hover)]' 
                 : 'bg-[rgba(107,114,128,0.2)] hover:bg-[rgba(107,114,128,0.4)] text-[var(--text-primary)]'
@@ -95,28 +96,37 @@ const HistoryItem: React.FC<{ item: GeneratedContent; onUseImage: (url: string) 
 
 const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose, history, onUseImage, onDownload }) => {
   const { t } = useTranslation();
+  const { setModalOpen } = useModal();
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setModalOpen(true);
+      return () => setModalOpen(false);
+    }
+  }, [isOpen, setModalOpen]);
+
   return (
-    <div className={`fixed inset-0 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+    <div className={`fixed inset-0 z-[9999] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
-      <div className={`absolute top-0 right-0 h-full w-full max-w-md bg-[var(--bg-card)] border-l border-[var(--border-primary)] shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="p-4 border-b border-[var(--border-primary)] flex justify-between items-center flex-shrink-0">
-          <h2 className="text-xl font-semibold text-[var(--accent-primary)]">{t('history.title')}</h2>
-          <button onClick={onClose} className="p-1 rounded-full text-[var(--text-secondary)] hover:bg-[rgba(107,114,128,0.2)] hover:text-[var(--text-primary)] transition-colors">
+      <div className={`absolute top-0 right-0 h-full w-full sm:max-w-md bg-[var(--bg-card)] border-l border-[var(--border-primary)] shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-3 sm:p-4 border-b border-[var(--border-primary)] flex justify-between items-center flex-shrink-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-[var(--accent-primary)]">{t('history.title')}</h2>
+          <button onClick={onClose} className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[rgba(107,114,128,0.2)] hover:text-[var(--text-primary)] transition-colors active:scale-95 touch-manipulation">
              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-4">
+        <div className="flex-grow overflow-y-auto p-3 sm:p-4">
           {history.length === 0 ? (
             <div className="text-center text-[var(--text-tertiary)] pt-10 flex flex-col items-center gap-4">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <p>{t('history.empty')}</p>
+                <p className="text-sm sm:text-base">{t('history.empty')}</p>
             </div>
           ) : (
-             <div className="space-y-4">
+             <div className="space-y-3 sm:space-y-4">
                 {history.map((item, index) => (
                     <HistoryItem key={index} item={item} onUseImage={onUseImage} onDownload={onDownload} />
                 ))}
