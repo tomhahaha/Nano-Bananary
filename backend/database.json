@@ -4,10 +4,10 @@
       "id": "user-1758716925606",
       "username": "fenggm",
       "phone": "17600340717",
-      "credits": 900,
+      "credits": 850,
       "password_hash": "$2a$10$example",
       "createdAt": "2025-09-24T12:28:45.606Z",
-      "updatedAt": "2025-09-24T12:28:59.843Z"
+      "updatedAt": "2025-09-24T12:38:45.807Z"
     }
   ],
   "creditTransactions": [
@@ -19,6 +19,15 @@
       "balance": 900,
       "description": "充值10元",
       "createdAt": "2025-09-24T12:28:59.843Z"
+    },
+    {
+      "id": "trans-1758717525807",
+      "userId": "user-1758716925606",
+      "type": "consume",
+      "amount": 50,
+      "balance": 850,
+      "description": "图像生成",
+      "createdAt": "2025-09-24T12:38:45.807Z"
     }
   ]
 }
