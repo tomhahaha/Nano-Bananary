@@ -98,13 +98,26 @@ mysql -u your_user -p banana < backend/init_database.sql
 
 ## 3. 构建和启动应用
 
-### 构建前端应用
+### 方式一：直接启动开发服务器（推荐用于快速部署）
+```bash
+# 直接启动前端开发服务器，监听所有网卡
+npm run dev -- --host 0.0.0.0 --port 5173
+
+# 或者使用PM2管理前端服务
+pm2 start "npm run dev -- --host 0.0.0.0 --port 5173" --name "nano-bananary-frontend"
+```
+
+### 方式二：构建生产版本（用于正式部署）
 ```bash
 # 构建生产版本
 npm run build
 
-# 预览构建结果 (可选)
-npm run preview
+# 使用serve启动静态文件服务
+npm install -g serve
+serve -s dist -l 5173 -H 0.0.0.0
+
+# 或者使用PM2管理
+pm2 start "serve -s dist -l 5173 -H 0.0.0.0" --name "nano-bananary-frontend"
 ```
 
 ### 启动后端服务 (如果有)
@@ -117,7 +130,35 @@ pm2 start test-server.js --name "nano-bananary-backend"
 node test-server.js
 ```
 
-### 配置Nginx反向代理 (可选)
+### 配置Vite开发服务器（支持IP访问）
+```bash
+# 修改vite.config.ts配置文件
+nano vite.config.ts
+```
+
+确保vite.config.ts包含以下配置：
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0', // 监听所有网卡
+    port: 5173,
+    strictPort: true, // 如果端口被占用则退出
+    cors: true // 启用CORS
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true
+  }
+})
+```
+
+### 可选：配置Nginx反向代理（如需域名访问）
+如果您需要通过域名访问，可以配置Nginx：
 ```bash
 # 创建Nginx配置文件
 sudo nano /etc/nginx/sites-available/nano-bananary
@@ -129,11 +170,17 @@ server {
     listen 80;
     server_name your-domain.com;
 
-    # 前端静态文件
+    # 代理到前端服务
     location / {
-        root /path/to/nano-bananary/dist;
-        index index.html;
-        try_files $uri $uri/ /index.html;
+        proxy_pass http://localhost:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 
     # 后端API代理
@@ -149,18 +196,6 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 }
-```
-
-启用Nginx配置：
-```bash
-# 创建软链接
-sudo ln -s /etc/nginx/sites-available/nano-bananary /etc/nginx/sites-enabled/
-
-# 测试配置
-sudo nginx -t
-
-# 重启Nginx
-sudo systemctl restart nginx
 ```
 
 ## 4. 服务管理
@@ -187,12 +222,16 @@ pm2 startup
 ### 防火墙配置
 ```bash
 # 开放必要端口
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw allow 3001  # 如果后端直接暴露
+sudo ufw allow 5173  # 前端应用端口
+sudo ufw allow 3001  # 后端API端口
+sudo ufw allow 80    # HTTP端口（如果使用Nginx）
+sudo ufw allow 443   # HTTPS端口（如果使用SSL）
 
 # 启用防火墙
 sudo ufw enable
+
+# 查看防火墙状态
+sudo ufw status
 ```
 
 ## 5. SSL证书配置 (可选，推荐生产环境)
