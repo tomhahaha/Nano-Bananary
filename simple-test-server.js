@@ -24,84 +24,134 @@ const server = http.createServer((req, res) => {
     
     // 检查是否存在dist目录
     const distPath = path.join(__dirname, 'dist');
+    const publicPath = path.join(__dirname, 'public');
+    
     if (fs.existsSync(distPath)) {
-        filePath = path.join(distPath, filePath);
+        // 优先使用dist目录（构建后的文件）
+        const fullPath = path.join(distPath, filePath);
+        serveFile(fullPath, res, () => {
+            // 如果文件不存在，尝试返回index.html（SPA路由）
+            const indexPath = path.join(distPath, 'index.html');
+            serveFile(indexPath, res, () => {
+                res.writeHead(404);
+                res.end('File not found');
+            });
+        });
+    } else if (fs.existsSync(publicPath)) {
+        // 如果没有dist目录，尝试public目录
+        const fullPath = path.join(publicPath, filePath);
+        serveFile(fullPath, res, () => {
+            res.writeHead(404);
+            res.end('File not found in public directory');
+        });
     } else {
-        // 如果没有dist目录，返回简单的测试页面
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        // 如果都没有，返回测试页面
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(`
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Nano-Bananary Test Server</title>
+    <title>🍌 Nano-Bananary Test Server</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .status { color: green; font-weight: bold; }
-        .info { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 40px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+            max-width: 600px;
+        }
+        .status { color: #4ade80; font-weight: bold; font-size: 1.2em; }
+        .info { 
+            background: rgba(255,255,255,0.1); 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 10px;
+            text-align: left;
+        }
+        .command {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 5px 0;
+        }
+        h1 { font-size: 2.5em; margin-bottom: 20px; }
+        ul { text-align: left; }
     </style>
 </head>
 <body>
-    <h1>🍌 Nano-Bananary Test Server</h1>
-    <p class="status">✓ Server is running successfully!</p>
-    <div class="info">
-        <p><strong>Server IP:</strong> 39.101.165.84</p>
-        <p><strong>Port:</strong> ${PORT}</p>
-        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>Status:</strong> If you can see this page, the server network configuration is working!</p>
+    <div class="container">
+        <h1>🍌 Nano-Bananary Test Server</h1>
+        <p class="status">✓ 服务器运行正常！</p>
+        <div class="info">
+            <p><strong>服务器IP:</strong> 39.101.165.84</p>
+            <p><strong>端口:</strong> ${PORT}</p>
+            <p><strong>启动时间:</strong> ${new Date().toLocaleString('zh-CN')}</p>
+            <p><strong>状态:</strong> 如果您能看到此页面，说明网络连接正常！</p>
+        </div>
+        <p>这表明问题可能出在前端构建或配置上，而不是网络连接问题。</p>
+        <p><strong>下一步操作：</strong></p>
+        <ul>
+            <li>检查项目是否正确构建：<div class="command">npm run build</div></li>
+            <li>检查PM2状态：<div class="command">pm2 status</div></li>
+            <li>查看PM2日志：<div class="command">pm2 logs</div></li>
+            <li>验证端口监听：<div class="command">netstat -tuln | grep 5173</div></li>
+        </ul>
+        <p style="margin-top: 30px; font-size: 0.9em; opacity: 0.8;">
+            这是一个临时测试服务器，用于验证网络连接。<br>
+            正常的应用服务器应该提供完整的React应用。
+        </p>
     </div>
-    <p>This means the issue is likely with the frontend build or PM2 configuration, not network connectivity.</p>
-    <p>Next steps:</p>
-    <ul>
-        <li>Check if the project was built correctly: <code>npm run build</code></li>
-        <li>Check PM2 status: <code>pm2 status</code></li>
-        <li>Check PM2 logs: <code>pm2 logs</code></li>
-    </ul>
 </body>
 </html>
         `);
         return;
     }
-    
-    // 尝试提供静态文件
+});
+
+function serveFile(filePath, res, onError) {
     fs.readFile(filePath, (err, data) => {
         if (err) {
-            if (err.code === 'ENOENT') {
-                // 文件不存在，尝试返回index.html（SPA路由）
-                const indexPath = path.join(distPath, 'index.html');
-                fs.readFile(indexPath, (indexErr, indexData) => {
-                    if (indexErr) {
-                        res.writeHead(404);
-                        res.end('File not found');
-                    } else {
-                        res.writeHead(200, { 'Content-Type': 'text/html' });
-                        res.end(indexData);
-                    }
-                });
-            } else {
-                res.writeHead(500);
-                res.end('Server error');
-            }
-        } else {
-            // 根据文件扩展名设置Content-Type
-            const ext = path.extname(filePath);
-            const contentTypes = {
-                '.html': 'text/html',
-                '.js': 'application/javascript',
-                '.css': 'text/css',
-                '.json': 'application/json',
-                '.png': 'image/png',
-                '.jpg': 'image/jpeg',
-                '.gif': 'image/gif',
-                '.svg': 'image/svg+xml',
-                '.ico': 'image/x-icon'
-            };
-            
-            const contentType = contentTypes[ext] || 'text/plain';
-            res.writeHead(200, { 'Content-Type': contentType });
-            res.end(data);
+            if (onError) onError();
+            return;
         }
+        
+        // 根据文件扩展名设置Content-Type
+        const ext = path.extname(filePath).toLowerCase();
+        const contentTypes = {
+            '.html': 'text/html; charset=utf-8',
+            '.js': 'application/javascript; charset=utf-8',
+            '.css': 'text/css; charset=utf-8',
+            '.json': 'application/json',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+            '.ico': 'image/x-icon',
+            '.woff': 'font/woff',
+            '.woff2': 'font/woff2',
+            '.ttf': 'font/ttf',
+            '.eot': 'application/vnd.ms-fontobject'
+        };
+        
+        const contentType = contentTypes[ext] || 'text/plain';
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data);
     });
-});
+}
 
 server.listen(PORT, HOST, () => {
     console.log(`🍌 Simple test server running at http://${HOST}:${PORT}/`);
