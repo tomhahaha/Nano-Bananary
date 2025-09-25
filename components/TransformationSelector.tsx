@@ -24,7 +24,6 @@ interface TransformationSelectorProps {
   onOrderChange: (newOrder: Transformation[]) => void;
   activeCategory: Transformation | null;
   setActiveCategory: (category: Transformation | null) => void;
-  userImageUrl?: string | null; // 新增：用户上传的图片用于预览
 }
 
 const TransformationSelector: React.FC<TransformationSelectorProps> = ({ 
@@ -33,8 +32,7 @@ const TransformationSelector: React.FC<TransformationSelectorProps> = ({
   hasPreviousResult, 
   onOrderChange, 
   activeCategory, 
-  setActiveCategory,
-  userImageUrl
+  setActiveCategory
 }) => {
   const { t } = useTranslation();
   const dragItemIndex = useRef<number | null>(null);
@@ -81,13 +79,9 @@ const TransformationSelector: React.FC<TransformationSelectorProps> = ({
     }
   };
 
-  // 获取预览图片：优先使用用户图片，否则使用默认预览图
+  // 获取预览图片：对于效果预览始终使用默认预览图，避免显示错误的用户图片
   const getPreviewImage = (transformation: Transformation) => {
-    // 如果有用户上传的图片，使用用户图片
-    if (userImageUrl) {
-      return userImageUrl;
-    }
-    // 否则使用效果预览图
+    // 总是使用效果预览图，避免缓存的用户图片干扰预览
     return getEffectPreview(transformation);
   };
 

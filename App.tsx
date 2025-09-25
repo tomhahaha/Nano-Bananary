@@ -597,7 +597,6 @@ const AppContent: React.FC = () => {
             onOrderChange={setTransformations}
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
-            userImageUrl={primaryImageUrl} // 传递用户上传的图片用于预览
           />
         ) : (
           <div className="container mx-auto p-3 sm:p-4 md:p-8 animate-fade-in">
