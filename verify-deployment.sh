@@ -24,9 +24,12 @@ fi
 
 echo ""
 echo "4. 访问地址:"
-IP=$(hostname -I | awk '{print $1}')
-echo "前端: http://$IP:5173/"
-echo "后端: http://$IP:3001/api/health"
+echo "前端: http://39.101.165.84:5173/"
+echo "后端: http://39.101.165.84:3001/api/health"
+echo ""
+echo "注意: 如果是云服务器，请确保:"
+echo "- 安全组已开放5173和3001端口"
+echo "- 防火墙允许这些端口访问"
 
 echo ""
 echo "=== 验证完成 ==="
