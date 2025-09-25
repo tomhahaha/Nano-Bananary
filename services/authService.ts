@@ -10,7 +10,7 @@ import type {
 } from '../types/auth';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-production-api.com/api' 
+  ? `http://${window.location.hostname}:3001/api`
   : 'http://localhost:3001/api';
 
 class AuthService {
