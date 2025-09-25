@@ -2,9 +2,17 @@
 
 通过IP地址和5173端口直接访问Nano-Bananary应用。
 
+## ⚠️ 用户权限说明
+
+- **普通用户**: 推荐使用，更安全
+- **Root用户**: 支持，但仅建议测试环境使用
+- 详细的Root用户部署指南请参考：[DEPLOY_ROOT.md](./DEPLOY_ROOT.md)
+
 ## 快速部署命令
 
 ### 1. 环境准备
+
+#### 普通用户
 ```bash
 # 更新系统
 sudo apt update
@@ -20,7 +28,23 @@ sudo npm install -g pm2
 sudo npm install -g serve
 ```
 
+#### Root用户
+```bash
+# 更新系统
+apt update
+
+# 安装Node.js (LTS版本)
+curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+apt-get install -y nodejs
+
+# 安装PM2和serve (使用--unsafe-perm标志)
+npm install -g pm2 --unsafe-perm=true --allow-root
+npm install -g serve --unsafe-perm=true --allow-root
+```
+
 ### 2. 项目部署
+
+#### 普通用户
 ```bash
 # 上传项目文件到服务器
 # 进入项目目录
@@ -32,6 +56,23 @@ npm install
 # 安装后端依赖
 cd backend
 npm install
+cd ..
+
+# 创建环境配置
+nano .env.local
+```
+
+#### Root用户
+```bash
+# 进入项目目录
+cd nano-bananary
+
+# 安装依赖 (使用--unsafe-perm标志)
+npm install --unsafe-perm=true --allow-root
+
+# 安装后端依赖
+cd backend
+npm install --unsafe-perm=true --allow-root
 cd ..
 
 # 创建环境配置

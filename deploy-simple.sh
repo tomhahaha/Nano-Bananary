@@ -1,37 +1,48 @@
 #!/bin/bash
 
-# Nano-Bananary Ubuntu部署脚本 - IP直接访问版本
+# Nano-Bananary Ubuntu部署脚本 - IP直接访问版本 (支持root用户)
 # 通过 IP:5173 端口直接访问前端应用
 
 echo "=== Nano-Bananary Ubuntu部署 - IP直接访问配置 ==="
 
-# 检查是否为root用户
+# 检查用户类型
 if [ "$EUID" -eq 0 ]; then
-    echo "请不要使用root用户运行此脚本"
-    exit 1
+    echo "检测到root用户，将使用root权限进行部署"
+    USE_SUDO=""
+else
+    echo "检测到普通用户，将使用sudo权限"
+    USE_SUDO="sudo"
 fi
 
 # 1. 系统环境准备
 echo "1. 安装系统依赖..."
-sudo apt update
+$USE_SUDO apt update
 
 # 安装Node.js (如果未安装)
 if ! command -v node &> /dev/null; then
     echo "安装Node.js..."
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | $USE_SUDO -E bash -
+    $USE_SUDO apt-get install -y nodejs
 fi
 
 # 安装PM2 (如果未安装)
 if ! command -v pm2 &> /dev/null; then
     echo "安装PM2..."
-    sudo npm install -g pm2
+    if [ "$EUID" -eq 0 ]; then
+        npm install -g pm2 --unsafe-perm=true --allow-root
+    else
+        $USE_SUDO npm install -g pm2
+    fi
 fi
 
 # 安装serve (用于生产环境)
 if ! command -v serve &> /dev/null; then
     echo "安装serve..."
-    sudo npm install -g serve
+    if [ "$EUID" -eq 0 ]; then
+        npm install -g serve --unsafe-perm=true --allow-root
+    else
+        $USE_SUDO npm install -g serve
+    fi
 fi
 
 echo "Node.js版本: $(node --version)"
@@ -39,13 +50,21 @@ echo "npm版本: $(npm --version)"
 
 # 2. 项目配置
 echo "2. 安装项目依赖..."
-npm install
+if [ "$EUID" -eq 0 ]; then
+    npm install --unsafe-perm=true --allow-root
+else
+    npm install
+fi
 
 # 检查后端目录
 if [ -d "backend" ]; then
     echo "安装后端依赖..."
     cd backend
-    npm install
+    if [ "$EUID" -eq 0 ]; then
+        npm install --unsafe-perm=true --allow-root
+    else
+        npm install
+    fi
     cd ..
 fi
 
@@ -65,14 +84,14 @@ fi
 
 # 4. 防火墙配置
 echo "4. 配置防火墙..."
-sudo ufw allow 5173/tcp comment "Nano-Bananary Frontend"
-sudo ufw allow 3001/tcp comment "Nano-Bananary Backend API"
+$USE_SUDO ufw allow 5173/tcp comment "Nano-Bananary Frontend"
+$USE_SUDO ufw allow 3001/tcp comment "Nano-Bananary Backend API"
 
 # 如果防火墙未启用，询问是否启用
-if ! sudo ufw status | grep -q "Status: active"; then
+if ! $USE_SUDO ufw status | grep -q "Status: active"; then
     read -p "是否启用防火墙? (y/n): " enable_firewall
     if [ "$enable_firewall" = "y" ] || [ "$enable_firewall" = "Y" ]; then
-        sudo ufw --force enable
+        $USE_SUDO ufw --force enable
     fi
 fi
 
