@@ -9,22 +9,29 @@ const PROXY_BASE_URL = 'https://ai.juguang.chat/v1beta/models';
 const API_KEY = process.env.API_KEY;
 
 export async function editImage(
-    base64ImageData: string, 
-    mimeType: string, 
+    base64ImageData: string | null, 
+    mimeType: string | null, 
     prompt: string,
     maskBase64: string | null,
-    secondaryImage: { base64: string; mimeType: string } | null
+    secondaryImage: { base64: string; mimeType: string } | null,
+    enhancedMode?: boolean,
+    aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9',
+    imageSize?: 'SMALL' | 'MEDIUM' | 'LARGE',
+    googleSearch?: boolean
 ): Promise<GeneratedContent> {
   try {
     let fullPrompt = prompt;
-    const parts: any[] = [
-      {
+    const parts: any[] = [];
+    
+    // 支持主图像可选
+    if (base64ImageData && mimeType) {
+      parts.push({
         inlineData: {
           data: base64ImageData,
           mimeType: mimeType,
         },
-      },
-    ];
+      });
+    }
 
     if (maskBase64) {
       parts.push({
@@ -46,18 +53,37 @@ export async function editImage(
     }
 
     parts.push({ text: fullPrompt });
+    
+    // 确定使用的模型
+    const modelName = enhancedMode ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image-preview';
+    
+    // 构建请求体
+    const requestBody: any = {
+      contents: [{ parts }],
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT'],
+      },
+    };
+    
+    // 增强模式下添加额外参数
+    if (enhancedMode) {
+      if (aspectRatio) {
+        requestBody.generationConfig.aspectRatio = aspectRatio;
+      }
+      if (imageSize) {
+        requestBody.generationConfig.imageSize = imageSize;
+      }
+      if (googleSearch !== undefined) {
+        requestBody.google_search = googleSearch;
+      }
+    }
 
-    const response = await fetch(`${PROXY_BASE_URL}/gemini-2.5-flash-image-preview:generateContent?key=${API_KEY}`, {
+    const response = await fetch(`${PROXY_BASE_URL}/${modelName}:generateContent?key=${API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: {
-          responseModalities: ['IMAGE', 'TEXT'],
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

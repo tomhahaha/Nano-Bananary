@@ -39,9 +39,15 @@ const CreditHistory: React.FC<CreditHistoryProps> = ({ isOpen, onClose }) => {
       console.log('API返回结果:', result); // 添加调试日志
       if (result.success) {
         // 兼容不同的后端数据格式
-        const transactions = result.data || result.transactions || [];
+        let transactions = result.data || result.transactions || [];
         console.log('解析到的交易记录:', transactions);
         console.log('交易记录数量:', transactions.length);
+        
+        // 按照时间降序排列
+        transactions = transactions.sort((a: CreditTransaction, b: CreditTransaction) => {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        
         setTransactions(transactions);
         console.log('设置的交易记录:', transactions);
       } else {

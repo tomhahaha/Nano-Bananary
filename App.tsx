@@ -75,6 +75,10 @@ const AppContent: React.FC = () => {
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<Transformation | null>(null);
+  const [enhancedMode, setEnhancedMode] = useState<boolean>(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '3:4' | '4:3' | '9:16' | '16:9'>('1:1');
+  const [imageSize, setImageSize] = useState<'SMALL' | 'MEDIUM' | 'LARGE'>('MEDIUM');
+  const [useGoogleSearch, setUseGoogleSearch] = useState<boolean>(false);
   
   useEffect(() => {
     try {
@@ -233,10 +237,18 @@ const AppContent: React.FC = () => {
   }, [selectedTransformation, customPrompt, primaryImageUrl, aspectRatio, t]);
 
   const handleGenerateImage = useCallback(async () => {
-    if (!primaryImageUrl || !selectedTransformation) {
+    // 修改：支持主图像可选
+    if (!selectedTransformation) {
         setError(t('app.error.uploadAndSelect'));
         return;
     }
+    
+    // 如果主图像不是可选的，且没有上传主图像，则报错
+    if (!selectedTransformation.isPrimaryOptional && !primaryImageUrl) {
+        setError(t('app.error.uploadAndSelect'));
+        return;
+    }
+    
     if (selectedTransformation.isMultiImage && !selectedTransformation.isSecondaryOptional && !secondaryImageUrl) {
         setError(t('app.error.uploadBoth'));
         return;
@@ -254,13 +266,13 @@ const AppContent: React.FC = () => {
     setLoadingMessage('');
 
     try {
-        const primaryMimeType = primaryImageUrl!.split(';')[0].split(':')[1] ?? 'image/png';
-        const primaryBase64 = primaryImageUrl!.split(',')[1];
+        const primaryMimeType = primaryImageUrl ? primaryImageUrl!.split(';')[0].split(':')[1] ?? 'image/png' : null;
+        const primaryBase64 = primaryImageUrl ? primaryImageUrl!.split(',')[1] : null;
         const maskBase64 = maskDataUrl ? maskDataUrl.split(',')[1] : null;
 
         if (selectedTransformation.isTwoStep) {
             setLoadingMessage(t('app.loading.step1'));
-            const stepOneResult = await editImage(primaryBase64, primaryMimeType, promptToUse, null, null);
+            const stepOneResult = await editImage(primaryBase64!, primaryMimeType!, promptToUse, null, null, false);
 
             if (!stepOneResult.imageUrl) throw new Error("Step 1 (line art) failed to generate an image.");
 
@@ -270,14 +282,14 @@ const AppContent: React.FC = () => {
 
             let secondaryImagePayload = null;
             if (secondaryImageUrl) {
-                const primaryImage = await loadImage(primaryImageUrl);
+                const primaryImage = await loadImage(primaryImageUrl!);
                 const resizedSecondaryImageUrl = await resizeImageToMatch(secondaryImageUrl, primaryImage);
                 const secondaryMimeType = resizedSecondaryImageUrl.split(';')[0].split(':')[1] ?? 'image/png';
                 const secondaryBase64 = resizedSecondaryImageUrl.split(',')[1];
                 secondaryImagePayload = { base64: secondaryBase64, mimeType: secondaryMimeType };
             }
 
-            const stepTwoResult = await editImage(stepOneImageBase64, stepOneImageMimeType, selectedTransformation.stepTwoPrompt!, null, secondaryImagePayload);
+            const stepTwoResult = await editImage(stepOneImageBase64, stepOneImageMimeType, selectedTransformation.stepTwoPrompt!, null, secondaryImagePayload, false);
             
             if (stepTwoResult.imageUrl) {
                 stepTwoResult.imageUrl = await embedWatermark(stepTwoResult.imageUrl, "Nano Bananary｜FXM");
@@ -307,7 +319,17 @@ const AppContent: React.FC = () => {
                 secondaryImagePayload = { base64: secondaryBase64, mimeType: secondaryMimeType };
             }
             setLoadingMessage(t('app.loading.default'));
-            const result = await editImage(primaryBase64, primaryMimeType, promptToUse, maskBase64, secondaryImagePayload);
+            const result = await editImage(
+                primaryBase64, 
+                primaryMimeType, 
+                promptToUse, 
+                maskBase64, 
+                secondaryImagePayload, 
+                enhancedMode,
+                enhancedMode ? imageAspectRatio : undefined,
+                enhancedMode ? imageSize : undefined,
+                enhancedMode ? useGoogleSearch : undefined
+            );
 
             if (result.imageUrl) result.imageUrl = await embedWatermark(result.imageUrl, "Nano Bananary｜FXM");
 
@@ -333,7 +355,7 @@ const AppContent: React.FC = () => {
       setIsLoading(false);
       setLoadingMessage('');
     }
-  }, [primaryImageUrl, secondaryImageUrl, selectedTransformation, maskDataUrl, customPrompt, t]);
+  }, [primaryImageUrl, secondaryImageUrl, selectedTransformation, maskDataUrl, customPrompt, t, enhancedMode, imageAspectRatio, imageSize, useGoogleSearch]);
   
   const handleGenerate = useCallback(async () => {
     // 检查登录状态
@@ -342,15 +364,18 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // 根据增强模式决定扣除积分数
+    const creditsToConsume = enhancedMode ? 100 : 50;
+    
     // 检查用户积分
-    if (user && user.credits < 50) {
+    if (user && user.credits < creditsToConsume) {
       setError(t('creditSystem.insufficientCredits'));
       return;
     }
     
     try {
       // 扣除积分
-      const creditResult = await authService.consumeCredits(50, t('creditSystem.imageGeneration'));
+      const creditResult = await authService.consumeCredits(creditsToConsume, enhancedMode ? t('creditSystem.enhancedImageGeneration') : t('creditSystem.imageGeneration'));
       if (!creditResult.success) {
         setError(creditResult.message || t('creditSystem.creditDeductFailed'));
         return;
@@ -369,7 +394,7 @@ const AppContent: React.FC = () => {
       console.error('Generate failed:', error);
       setError(t('creditSystem.generateFailed'));
     }
-  }, [selectedTransformation, handleGenerateVideo, handleGenerateImage, isAuthenticated, setShowLoginModal, user, refreshUser]);
+  }, [selectedTransformation, handleGenerateVideo, handleGenerateImage, isAuthenticated, setShowLoginModal, user, refreshUser, enhancedMode, t]);
 
 
   const handleUseImageAsInput = useCallback(async (imageUrl: string) => {
@@ -441,13 +466,26 @@ const AppContent: React.FC = () => {
     } else {
         let imagesReady = false;
         if (selectedTransformation.isMultiImage) {
-            if (selectedTransformation.isSecondaryOptional) {
+            // 如果是多图像模式
+            if (selectedTransformation.isPrimaryOptional) {
+                // 主图像可选，只需要检查是否有至少一张图片或有文字提示
+                imagesReady = !!primaryImageUrl || !!secondaryImageUrl || !!customPrompt.trim();
+            } else if (selectedTransformation.isSecondaryOptional) {
+                // 副图像可选，需要主图像
                 imagesReady = !!primaryImageUrl;
             } else {
+                // 两张图片都需要
                 imagesReady = !!primaryImageUrl && !!secondaryImageUrl;
             }
         } else {
-            imagesReady = !!primaryImageUrl;
+            // 单图像模式
+            if (selectedTransformation.isPrimaryOptional) {
+                // 主图像可选，只需要有文字提示
+                imagesReady = !!primaryImageUrl || !!customPrompt.trim();
+            } else {
+                // 需要主图像
+                imagesReady = !!primaryImageUrl;
+            }
         }
         isGenerateDisabled = isLoading || isCustomPromptEmpty || !imagesReady;
     }
@@ -640,6 +678,69 @@ const AppContent: React.FC = () => {
                   
                   {renderInputUI()}
                   
+                  {!selectedTransformation.isVideo && (
+                    <div className="mt-4 p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-sm font-semibold text-[var(--text-primary)]">{t('app.enhancedMode')}</label>
+                        <button
+                          onClick={() => setEnhancedMode(!enhancedMode)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            enhancedMode ? 'bg-[var(--accent-primary)]' : 'bg-gray-400'
+                          }`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            enhancedMode ? 'translate-x-6' : 'translate-x-1'
+                          }`} />
+                        </button>
+                      </div>
+                      {enhancedMode && (
+                        <>
+                          <div className="mt-3">
+                            <label className="text-sm font-semibold text-[var(--text-primary)] mb-2 block">{t('app.imageAspectRatio')}</label>
+                            <select
+                              value={imageAspectRatio}
+                              onChange={(e) => setImageAspectRatio(e.target.value as any)}
+                              className="w-full p-2 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-md text-sm"
+                            >
+                              <option value="1:1">1:1</option>
+                              <option value="3:4">3:4</option>
+                              <option value="4:3">4:3</option>
+                              <option value="9:16">9:16</option>
+                              <option value="16:9">16:9</option>
+                            </select>
+                          </div>
+                          <div className="mt-3">
+                            <label className="text-sm font-semibold text-[var(--text-primary)] mb-2 block">{t('app.imageSize')}</label>
+                            <select
+                              value={imageSize}
+                              onChange={(e) => setImageSize(e.target.value as any)}
+                              className="w-full p-2 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-md text-sm"
+                            >
+                              <option value="SMALL">{t('app.imageSizeSmall')}</option>
+                              <option value="MEDIUM">{t('app.imageSizeMedium')}</option>
+                              <option value="LARGE">{t('app.imageSizeLarge')}</option>
+                            </select>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between">
+                            <label className="text-sm font-semibold text-[var(--text-primary)]">{t('app.googleSearch')}</label>
+                            <button
+                              onClick={() => setUseGoogleSearch(!useGoogleSearch)}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                useGoogleSearch ? 'bg-[var(--accent-primary)]' : 'bg-gray-400'
+                              }`}
+                            >
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                useGoogleSearch ? 'translate-x-6' : 'translate-x-1'
+                              }`} />
+                            </button>
+                          </div>
+                          <div className="mt-3 text-xs text-[var(--text-secondary)]">
+                            {t('app.enhancedModeTip')}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                    <button
                     onClick={handleGenerate}
                     disabled={isGenerateDisabled}

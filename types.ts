@@ -9,6 +9,7 @@ export interface Transformation {
   items?: Transformation[];
   isMultiImage?: boolean;
   isSecondaryOptional?: boolean;
+  isPrimaryOptional?: boolean;
   isTwoStep?: boolean;
   stepTwoPrompt?: string;
   primaryUploaderTitle?: string;

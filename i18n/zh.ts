@@ -8,6 +8,14 @@ export default {
     generating: "生成中...",
     result: "结果",
     yourImageWillAppear: "您生成的图像将显示在这里。",
+    enhancedMode: "增强模式",
+    imageAspectRatio: "图像比例",
+    imageSize: "清晰度",
+    imageSizeSmall: "低",
+    imageSizeMedium: "中",
+    imageSizeLarge: "高",
+    googleSearch: "使用搜索",
+    enhancedModeTip: "增强模式每次使用扣100积分",
     error: {
       uploadAndSelect: "请上传图像并选择一个效果。",
       uploadBoth: "请上传两个所需的图像。",
@@ -258,10 +266,11 @@ export default {
       passwordMismatch: "两次输入的密码不一致",
       amountTooLow: "充值金额不能小于1元"
     },
-    insufficientCredits: "积分不足！每次生成需要50积分，请先充值。",
+    insufficientCredits: "积分不足！每次生成需要积分，请先充值。",
     creditDeductFailed: "积分扣除失败，请重试。",
     generateFailed: "生成失败，请重试。",
-    imageGeneration: "图像生成"
+    imageGeneration: "图像生成",
+    enhancedImageGeneration: "增强图像生成"
   },
   auth: {
     login: "用户登录",

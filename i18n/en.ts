@@ -8,6 +8,14 @@ export default {
     generating: "Generating...",
     result: "Result",
     yourImageWillAppear: "Your generated image will appear here.",
+    enhancedMode: "Enhanced Mode",
+    imageAspectRatio: "Aspect Ratio",
+    imageSize: "Image Quality",
+    imageSizeSmall: "Low",
+    imageSizeMedium: "Medium",
+    imageSizeLarge: "High",
+    googleSearch: "Use Search",
+    enhancedModeTip: "Enhanced mode costs 100 credits per use",
     error: {
       uploadAndSelect: "Please upload an image and select an effect.",
       uploadBoth: "Please upload both required images.",
@@ -258,10 +266,11 @@ export default {
       passwordMismatch: "Passwords do not match",
       amountTooLow: "Amount cannot be less than $1"
     },
-    insufficientCredits: "Insufficient credits! Each generation requires 50 credits, please recharge first.",
+    insufficientCredits: "Insufficient credits! Generation requires credits, please recharge first.",
     creditDeductFailed: "Credit deduction failed, please try again.",
     generateFailed: "Generation failed, please try again.",
-    imageGeneration: "Image Generation"
+    imageGeneration: "Image Generation",
+    enhancedImageGeneration: "Enhanced Image Generation"
   },
   auth: {
     login: "User Login",

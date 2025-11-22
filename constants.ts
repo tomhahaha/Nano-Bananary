@@ -58,6 +58,7 @@ export const TRANSFORMATIONS: Transformation[] = [
     descriptionKey: "transformations.effects.customPrompt.description",
     isMultiImage: true,
     isSecondaryOptional: true,
+    isPrimaryOptional: true,
     primaryUploaderTitle: "transformations.effects.customPrompt.uploader1Title",
     primaryUploaderDescription: "transformations.effects.customPrompt.uploader1Desc",
     secondaryUploaderTitle: "transformations.effects.customPrompt.uploader2Title",
