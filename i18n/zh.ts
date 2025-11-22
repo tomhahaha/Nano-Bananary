@@ -107,7 +107,7 @@ export default {
       customPrompt: { 
         title: "自定义提示", 
         description: "描述你能想象到的任何变化。最多可上传两张图片作为参考（例如，角色和风格参考）。你的创造力是唯一的限制！",
-        uploader1Title: "主图像",
+        uploader1Title: "主图像（可选）",
         uploader1Desc: "要编辑的主要图像。",
         uploader2Title: "参考图像（可选）",
         uploader2Desc: "用于风格、内容或上下文的第二张图像。" 

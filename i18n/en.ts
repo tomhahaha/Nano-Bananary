@@ -107,7 +107,7 @@ export default {
       customPrompt: { 
         title: "Custom Prompt", 
         description: "Describe any change you can imagine. Upload up to two images for context (e.g., character and style reference). Your creativity is the only limit!",
-        uploader1Title: "Primary Image",
+        uploader1Title: "Primary Image (Optional)",
         uploader1Desc: "The main image to edit.",
         uploader2Title: "Reference Image (Optional)",
         uploader2Desc: "A second image for style, content, or context." 

@@ -76,8 +76,8 @@ const AppContent: React.FC = () => {
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<Transformation | null>(null);
   const [enhancedMode, setEnhancedMode] = useState<boolean>(false);
-  const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '3:4' | '4:3' | '9:16' | '16:9'>('1:1');
-  const [imageSize, setImageSize] = useState<'SMALL' | 'MEDIUM' | 'LARGE'>('MEDIUM');
+  const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '9:16' | '16:9' | '21:9'>('1:1');
+  const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('2K');
   const [useGoogleSearch, setUseGoogleSearch] = useState<boolean>(false);
   
   useEffect(() => {
@@ -703,10 +703,15 @@ const AppContent: React.FC = () => {
                               className="w-full p-2 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-md text-sm"
                             >
                               <option value="1:1">1:1</option>
+                              <option value="2:3">2:3</option>
+                              <option value="3:2">3:2</option>
                               <option value="3:4">3:4</option>
                               <option value="4:3">4:3</option>
+                              <option value="4:5">4:5</option>
+                              <option value="5:4">5:4</option>
                               <option value="9:16">9:16</option>
                               <option value="16:9">16:9</option>
+                              <option value="21:9">21:9</option>
                             </select>
                           </div>
                           <div className="mt-3">
@@ -716,9 +721,9 @@ const AppContent: React.FC = () => {
                               onChange={(e) => setImageSize(e.target.value as any)}
                               className="w-full p-2 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-md text-sm"
                             >
-                              <option value="SMALL">{t('app.imageSizeSmall')}</option>
-                              <option value="MEDIUM">{t('app.imageSizeMedium')}</option>
-                              <option value="LARGE">{t('app.imageSizeLarge')}</option>
+                              <option value="1K">1K</option>
+                              <option value="2K">2K</option>
+                              <option value="4K">4K</option>
                             </select>
                           </div>
                           <div className="mt-3 flex items-center justify-between">
